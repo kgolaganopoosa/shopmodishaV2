@@ -1,0 +1,2040 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Shop MODISHA - Express Ordering & Rewards Portal</title>
+    
+    <!-- PWA & Mobile Web App Meta Tags -->
+    <meta name="theme-color" content="#059669">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Shop MODISHA">
+    <meta name="description" content="Shop MODISHA Express WhatsApp Ordering Portal, Local Delivery Service, and Black Card Rewards.">
+
+    <!-- Web App Manifest (Data URI) -->
+    <link rel="manifest" id="manifestLink">
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Inter & JetBrains Mono Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <!-- Supabase JS Client SDK v2 -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#ecfdf5',
+                            100: '#d1fae5',
+                            500: '#10b981',
+                            600: '#059669',
+                            700: '#047857',
+                            800: '#065f46',
+                            900: '#064e3b',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .modal-backdrop {
+            background-color: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(4px);
+        }
+        /* Touch highlight improvements for mobile PWA */
+        button, a, input, label, textarea {
+            -webkit-tap-highlight-color: transparent;
+        }
+        /* Luxury Black Rewards Card Metallic Styling */
+        .black-rewards-card {
+            background: radial-gradient(circle at 85% 15%, rgba(16, 185, 129, 0.22) 0%, transparent 45%),
+                        radial-gradient(circle at 15% 85%, rgba(234, 179, 8, 0.16) 0%, transparent 50%),
+                        linear-gradient(135deg, #09090b 0%, #18181b 52%, #09090b 100%);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.16);
+        }
+        .card-shimmer {
+            background: linear-gradient(115deg, transparent 25%, rgba(255,255,255,0.06) 45%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.06) 55%, transparent 75%);
+        }
+        .emv-chip {
+            background: linear-gradient(135deg, #fde68a 0%, #d97706 50%, #fbbf24 100%);
+        }
+    </style>
+</head>
+<body class="font-sans antialiased text-slate-800 flex flex-col min-h-screen bg-slate-50 select-none sm:select-auto">
+
+    <!-- Toast Notification Banner (Replaces native alert/confirm) -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+    <!-- Custom PWA Install Banner -->
+    <div id="pwaInstallBanner" class="hidden bg-slate-900 text-white px-4 py-3 border-b border-slate-800 transition-all duration-300">
+        <div class="max-w-6xl mx-auto flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center font-bold text-white shadow-md text-lg shrink-0">
+                    <i class="fa-solid fa-bag-shopping"></i>
+                </div>
+                <div>
+                    <h4 class="font-bold text-sm leading-tight text-white">Install Shop MODISHA App</h4>
+                    <p class="text-xs text-slate-300">Add to Home Screen for fast offline order drafting & rewards!</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+                <button onclick="dismissInstallBanner()" class="text-xs text-slate-400 hover:text-white px-2 py-1.5">Later</button>
+                <button onclick="triggerPwaInstall()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3.5 py-1.5 rounded-lg shadow-sm flex items-center gap-1.5">
+                    <i class="fa-solid fa-download"></i> Install
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Offline Status Bar -->
+    <div id="offlineBar" class="hidden bg-amber-500 text-slate-900 text-xs py-1.5 px-4 text-center font-bold flex items-center justify-center gap-2 shadow-inner">
+        <i class="fa-solid fa-wifi"></i> You are currently offline. Orders will be prepared and sent once reconnecting to WhatsApp!
+    </div>
+
+    <!-- Top Delivery Announcement Bar -->
+    <div class="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white text-sm py-2.5 px-4 text-center shadow-sm font-medium flex items-center justify-center gap-2">
+        <i class="fa-solid fa-truck-fast text-emerald-200 text-base animate-pulse"></i>
+        <span>Standard Delivery Fee: <strong class="underline decoration-emerald-300 underline-offset-2 text-white">R5</strong> — Fast & Local Delivery Guaranteed!</span>
+    </div>
+
+    <!-- Navigation Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:h-16 flex flex-wrap items-center justify-between gap-3">
+            <!-- Brand Logo -->
+            <div onclick="switchView('orderView')" class="flex items-center space-x-3 cursor-pointer">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center text-white shadow-md shadow-emerald-500/20">
+                    <i class="fa-solid fa-bag-shopping text-xl"></i>
+                </div>
+                <div>
+                    <span class="text-xl font-extrabold tracking-tight text-slate-900">Shop <span class="text-emerald-600">MODISHA</span></span>
+                    <span class="block text-[10px] font-semibold uppercase tracking-wider text-slate-400">Express Portal & Rewards</span>
+                </div>
+            </div>
+
+            <!-- View Switcher Tabs -->
+            <nav class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80 order-3 sm:order-2 w-full sm:w-auto justify-between sm:justify-center">
+                <button type="button" id="nav-orderView" onclick="switchView('orderView')" class="nav-tab flex-1 sm:flex-initial px-4 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 bg-white text-emerald-700 shadow-xs">
+                    <i class="fa-solid fa-cart-shopping"></i>
+                    <span>Order</span>
+                </button>
+                <button type="button" id="nav-rewardsView" onclick="switchView('rewardsView')" class="nav-tab flex-1 sm:flex-initial px-4 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 text-slate-600 hover:text-slate-900">
+                    <i class="fa-solid fa-credit-card text-amber-500"></i>
+                    <span>My Rewards</span>
+                </button>
+            </nav>
+
+            <!-- Install Button & Direct Order Badge -->
+            <div class="flex items-center gap-2 order-2 sm:order-3">
+                <button id="headerInstallBtn" onclick="triggerPwaInstall()" class="hidden sm:flex items-center gap-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 px-3 py-2 rounded-xl shadow-sm transition">
+                    <i class="fa-solid fa-download"></i>
+                    <span>Install App</span>
+                </button>
+                <div class="flex items-center gap-1.5 text-xs font-semibold text-slate-600 bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200">
+                    <i class="fa-brands fa-whatsapp text-emerald-500 text-base"></i>
+                    <span class="hidden xs:inline">Direct Order</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- ========================================================================
+         VIEW 1: EXPRESS ORDERING PORTAL (DEFAULT)
+         ======================================================================== -->
+    <main id="orderView" class="view-section flex-grow max-w-4xl w-full mx-auto px-4 py-8 sm:py-12">
+        
+        <!-- Hero Title Section -->
+        <div class="text-center mb-8 sm:mb-10">
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80 mb-3">
+                <i class="fa-solid fa-bolt text-emerald-500"></i> Fast & Easy PWA Checkout
+            </span>
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+                Submit Your Order Details
+            </h1>
+            <p class="mt-2 text-sm sm:text-base text-slate-600 max-w-lg mx-auto">
+                Fill in your list below. Your order request will automatically format into a ready-to-send WhatsApp message to process instantly.
+            </p>
+        </div>
+
+        <!-- Main Form Card -->
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-200/80 overflow-hidden">
+            <div class="p-6 sm:p-10">
+                
+                <form id="orderForm" onsubmit="handleOrderSubmit(event)" class="space-y-6">
+                    
+                    <!-- 1. Full Name -->
+                    <div>
+                        <label for="fullName" class="block text-sm font-bold text-slate-700 mb-1.5">
+                            Full Name <span class="text-red-500">*</span>
+                        </label>
+                        <div class="relative rounded-xl shadow-xs">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                <i class="fa-regular fa-user"></i>
+                            </div>
+                            <input 
+                                type="text" 
+                                id="fullName" 
+                                required 
+                                placeholder="e.g. Thabo Mokoena"
+                                class="block w-full pl-10 pr-4 py-3 bg-slate-50/50 text-slate-900 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm transition"
+                            />
+                        </div>
+                    </div>
+
+                    <!-- 2. Products List -->
+                    <div>
+                        <label for="productsList" class="block text-sm font-bold text-slate-700 mb-1.5">
+                            List of Products You're Shopping <span class="text-red-500">*</span>
+                        </label>
+                        <div class="relative rounded-xl shadow-xs">
+                            <textarea 
+                                id="productsList" 
+                                required 
+                                rows="4" 
+                                placeholder="List your items here (e.g.&#10;1. Brown Bread x2&#10;2. 2L Full Cream Milk&#10;3. 1kg Sugar)"
+                                class="block w-full p-3.5 bg-slate-50/50 text-slate-900 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm transition"
+                            ></textarea>
+                        </div>
+                        <p class="mt-1.5 text-xs text-slate-500">Please specify quantities where possible.</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                        <!-- 3. Cash Amount Available -->
+                        <div>
+                            <label for="cashAmount" class="block text-sm font-bold text-slate-700 mb-1.5">
+                                Amount of Cash You Have <span class="text-red-500">*</span>
+                            </label>
+                            <div class="relative rounded-xl shadow-xs">
+                                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-700 font-bold text-base">
+                                    R
+                                </div>
+                                <input 
+                                    type="number" 
+                                    id="cashAmount" 
+                                    min="0" 
+                                    step="1" 
+                                    required 
+                                    placeholder="200"
+                                    class="block w-full pl-10 pr-4 py-3 bg-slate-50/50 text-slate-900 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm transition"
+                                />
+                            </div>
+                            <p class="mt-1.5 text-xs text-slate-500">Helps us calculate change or verify budget.</p>
+                        </div>
+
+                        <!-- 4. Payment Method -->
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">
+                                Payment Method <span class="text-red-500">*</span>
+                            </label>
+                            <div class="grid grid-cols-2 gap-3">
+                                <label class="relative flex items-center justify-center p-3 border border-slate-300 rounded-xl cursor-pointer hover:bg-slate-50 transition has-[:checked]:bg-emerald-50 has-[:checked]:border-emerald-600 has-[:checked]:text-emerald-900">
+                                    <input type="radio" name="paymentMethod" value="Cash" required class="sr-only peer" checked>
+                                    <div class="flex items-center space-x-2 text-sm font-medium text-slate-700 peer-checked:text-emerald-800">
+                                        <i class="fa-solid fa-money-bill-wave text-emerald-600"></i>
+                                        <span>Cash</span>
+                                    </div>
+                                    <div class="absolute -top-1 -right-1 hidden peer-checked:block w-4 h-4 bg-emerald-600 rounded-full border-2 border-white"></div>
+                                </label>
+
+                                <label class="relative flex items-center justify-center p-3 border border-slate-300 rounded-xl cursor-pointer hover:bg-slate-50 transition has-[:checked]:bg-emerald-50 has-[:checked]:border-emerald-600 has-[:checked]:text-emerald-900">
+                                    <input type="radio" name="paymentMethod" value="Card" required class="sr-only peer">
+                                    <div class="flex items-center space-x-2 text-sm font-medium text-slate-700 peer-checked:text-emerald-800">
+                                        <i class="fa-solid fa-credit-card text-emerald-600"></i>
+                                        <span>Card</span>
+                                    </div>
+                                    <div class="absolute -top-1 -right-1 hidden peer-checked:block w-4 h-4 bg-emerald-600 rounded-full border-2 border-white"></div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Delivery Summary Notice -->
+                    <div class="bg-slate-50 rounded-xl p-4 border border-slate-200 flex items-start gap-3 text-xs text-slate-600">
+                        <i class="fa-solid fa-circle-info text-emerald-600 text-base mt-0.5 flex-shrink-0"></i>
+                        <div>
+                            <span class="font-bold text-slate-800">Order Summary Note:</span> Standard delivery fee of <strong class="text-emerald-700 font-bold">R5</strong> will be appended to your order summary upon sending via WhatsApp.
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="pt-2">
+                        <button 
+                            type="submit" 
+                            class="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold py-4 px-6 rounded-xl shadow-lg shadow-emerald-600/30 hover:shadow-emerald-600/40 transition-all duration-200 flex items-center justify-center gap-3 text-base cursor-pointer"
+                        >
+                            <i class="fa-brands fa-whatsapp text-2xl"></i>
+                            <span>Send Order via WhatsApp</span>
+                        </button>
+                    </div>
+
+                </form>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- ========================================================================
+         VIEW 2: CUSTOMER "MY REWARDS" PORTAL
+         ======================================================================== -->
+    <main id="rewardsView" class="view-section hidden flex-grow max-w-4xl w-full mx-auto px-4 py-8 sm:py-12">
+        
+        <!-- Customer Login Gate -->
+        <div id="customerLoginSection" class="max-w-md mx-auto">
+            <div class="text-center mb-8">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-zinc-900 text-amber-400 border border-zinc-700 mb-3">
+                    <i class="fa-solid fa-crown"></i> VIP Loyalty Program
+                </span>
+                <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">
+                    Shop MODISHA Rewards
+                </h1>
+                <p class="mt-2 text-sm text-slate-600">
+                    Enter your 4-digit PIN and 3-digit Lock Code to unlock your Black Rewards Card & balance.
+                </p>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-xl border border-slate-200/80 p-6 sm:p-8">
+                <form onsubmit="handleCustomerUnlock(event)" class="space-y-5">
+                    <div>
+                        <label for="custCardIdInput" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                            Card ID <span class="text-slate-400 font-normal lowercase">(optional if PIN + Lock are unique)</span>
+                        </label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                <i class="fa-solid fa-id-card"></i>
+                            </div>
+                            <input 
+                                type="text" 
+                                id="custCardIdInput" 
+                                placeholder="e.g. MOD-1001"
+                                class="block w-full pl-10 pr-4 py-3 bg-slate-50 text-slate-900 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm font-mono uppercase transition"
+                            />
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="custPinInput" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                                4-Digit PIN <span class="text-red-500">*</span>
+                            </label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                    <i class="fa-solid fa-key"></i>
+                                </div>
+                                <input 
+                                    type="password" 
+                                    id="custPinInput" 
+                                    inputmode="numeric"
+                                    pattern="[0-9]{4}"
+                                    maxlength="4"
+                                    required 
+                                    placeholder="••••"
+                                    class="block w-full pl-10 pr-3 py-3 bg-slate-50 text-slate-900 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-center text-lg font-mono tracking-[0.35em] transition"
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="custLockInput" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                                3-Digit Lock <span class="text-red-500">*</span>
+                            </label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                    <i class="fa-solid fa-lock"></i>
+                                </div>
+                                <input 
+                                    type="password" 
+                                    id="custLockInput" 
+                                    inputmode="numeric"
+                                    pattern="[0-9]{3}"
+                                    maxlength="3"
+                                    required 
+                                    placeholder="•••"
+                                    class="block w-full pl-10 pr-3 py-3 bg-slate-50 text-slate-900 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-center text-lg font-mono tracking-[0.35em] transition"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="customerLoginError" class="hidden bg-red-50 border border-red-200 text-red-700 text-xs font-medium px-4 py-3 rounded-xl flex items-center gap-2">
+                        <i class="fa-solid fa-circle-exclamation"></i>
+                        <span id="customerLoginErrorText">Invalid PIN or Lock Code. Please try again.</span>
+                    </div>
+
+                    <button 
+                        type="submit" 
+                        id="unlockRewardsBtn"
+                        class="w-full bg-zinc-900 hover:bg-zinc-800 text-white font-bold py-3.5 px-6 rounded-xl shadow-lg transition flex items-center justify-center gap-2.5 text-sm cursor-pointer"
+                    >
+                        <i class="fa-solid fa-unlock-keyhole text-amber-400"></i>
+                        <span>Unlock My Black Card</span>
+                    </button>
+                </form>
+
+                <div class="mt-6 pt-5 border-t border-slate-100 text-center">
+                    <p class="text-xs text-slate-500">
+                        Don't have a Shop MODISHA Rewards card yet? Ask our team on WhatsApp or in-store to register your profile!
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Customer Unlocked Black Card Dashboard -->
+        <div id="customerCardSection" class="hidden max-w-xl mx-auto space-y-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-xl font-extrabold text-slate-900">Your Rewards Vault</h2>
+                    <p class="text-xs text-slate-500">Verified Shop MODISHA Member</p>
+                </div>
+                <button onclick="lockCustomerCard()" class="bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold px-3.5 py-2 rounded-xl transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-lock"></i>
+                    <span>Lock Card</span>
+                </button>
+            </div>
+
+            <!-- LUXURY BLACK REWARDS CARD -->
+            <div class="black-rewards-card relative rounded-3xl p-6 sm:p-8 text-white overflow-hidden border border-zinc-700/80 aspect-[1.586/1] flex flex-col justify-between">
+                <div class="card-shimmer absolute inset-0 pointer-events-none"></div>
+                
+                <!-- Top Row: Brand & Contactless -->
+                <div class="relative z-10 flex items-start justify-between">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="w-7 h-7 rounded-lg bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-400 font-extrabold text-xs">M</span>
+                            <span class="font-extrabold tracking-widest text-sm sm:text-base uppercase text-white">SHOP <span class="text-emerald-400">MODISHA</span></span>
+                        </div>
+                        <span class="block text-[10px] font-semibold tracking-[0.25em] text-amber-400/90 uppercase mt-1">BLACK REWARDS MEMBER</span>
+                    </div>
+                    <div class="flex items-center gap-3 text-zinc-400">
+                        <i class="fa-solid fa-wifi rotate-90 text-lg"></i>
+                        <i class="fa-solid fa-crown text-amber-400 text-lg"></i>
+                    </div>
+                </div>
+
+                <!-- Middle Row: EMV Chip & Rewards Balance in Rands -->
+                <div class="relative z-10 my-auto py-2 flex items-center justify-between gap-4">
+                    <div class="emv-chip w-11 h-8 sm:w-12 sm:h-9 rounded-md border border-amber-200/50 shadow-inner flex items-center justify-center opacity-90">
+                        <div class="w-full h-[1px] bg-amber-900/30"></div>
+                    </div>
+                    <div class="text-right">
+                        <span class="block text-[10px] uppercase tracking-widest text-zinc-400 font-semibold">Available Rewards Balance</span>
+                        <span id="cardRewardsBalance" class="font-mono text-2xl sm:text-4xl font-extrabold text-white tracking-tight">
+                            R 0.00
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Bottom Row: Customer Name & Card ID -->
+                <div class="relative z-10 flex items-end justify-between border-t border-white/10 pt-3">
+                    <div>
+                        <span class="block text-[9px] uppercase tracking-widest text-zinc-400">Cardholder Name</span>
+                        <span id="cardCustomerName" class="text-sm sm:text-base font-bold tracking-wider uppercase text-zinc-100">
+                            CUSTOMER NAME
+                        </span>
+                    </div>
+                    <div class="text-right">
+                        <span class="block text-[9px] uppercase tracking-widest text-zinc-400">Card ID</span>
+                        <span id="cardCustomerId" class="font-mono text-xs sm:text-sm font-bold tracking-widest text-emerald-400">
+                            MOD-0000
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin Custom Message Box -->
+            <div class="bg-white rounded-2xl shadow-md border border-slate-200 p-5 sm:p-6">
+                <div class="flex items-center gap-2.5 mb-3">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                        <i class="fa-solid fa-envelope-open-text"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-900">Message from Shop MODISHA</h3>
+                        <p class="text-[11px] text-slate-400">Rewards updates, bonuses & special offers</p>
+                    </div>
+                </div>
+                <div id="cardAdminMessage" class="bg-slate-50 rounded-xl p-4 border border-slate-200/80 text-sm text-slate-700 leading-relaxed whitespace-pre-line">
+                    Welcome to Shop MODISHA Rewards! Keep shopping with us to earn more cashback rewards in Rands.
+                </div>
+            </div>
+
+            <!-- Quick Action to Order -->
+            <div class="flex flex-col sm:flex-row gap-3">
+                <button onclick="switchView('orderView')" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-5 rounded-xl shadow-md transition flex items-center justify-center gap-2 text-sm">
+                    <i class="fa-solid fa-bag-shopping"></i>
+                    <span>Place a New Order</span>
+                </button>
+                <button onclick="refreshCustomerCard()" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold py-3.5 px-5 rounded-xl transition flex items-center justify-center gap-2 text-sm">
+                    <i class="fa-solid fa-rotate"></i>
+                    <span>Refresh Balance</span>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- ========================================================================
+         VIEW 3: ADMIN PORTAL (LOGIN + REWARDS MANAGEMENT DASHBOARD)
+         ======================================================================== -->
+    <main id="adminView" class="view-section hidden flex-grow max-w-6xl w-full mx-auto px-4 py-8 sm:py-10">
+        
+        <!-- Admin Login Screen -->
+        <div id="adminLoginSection" class="max-w-md mx-auto">
+            <div class="text-center mb-8">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-slate-900 text-white mb-3">
+                    <i class="fa-solid fa-shield-halved text-emerald-400"></i> Restricted Management Access
+                </span>
+                <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">
+                    Admin Portal Login
+                </h1>
+                <p class="mt-2 text-sm text-slate-600">
+                    Sign in to manage Shop MODISHA Rewards customers, balances, PINs, and messages.
+                </p>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-xl border border-slate-200/80 p-6 sm:p-8">
+                <form onsubmit="handleAdminLogin(event)" class="space-y-5">
+                    <div>
+                        <label for="adminPasswordInput" class="block text-sm font-bold text-slate-700 mb-1.5">
+                            Admin Password <span class="text-red-500">*</span>
+                        </label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                <i class="fa-solid fa-lock"></i>
+                            </div>
+                            <input 
+                                type="password" 
+                                id="adminPasswordInput" 
+                                required 
+                                placeholder="Enter admin password"
+                                class="block w-full pl-10 pr-10 py-3 bg-slate-50 text-slate-900 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm transition"
+                            />
+                            <button type="button" onclick="toggleAdminPassVisibility()" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600">
+                                <i id="adminPassEye" class="fa-regular fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="adminLoginError" class="hidden bg-red-50 border border-red-200 text-red-700 text-xs font-medium px-4 py-3 rounded-xl flex items-center gap-2">
+                        <i class="fa-solid fa-circle-exclamation"></i>
+                        <span id="adminLoginErrorText">Incorrect admin password.</span>
+                    </div>
+
+                    <button 
+                        type="submit" 
+                        id="adminLoginBtn"
+                        class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-6 rounded-xl shadow-lg shadow-emerald-600/25 transition flex items-center justify-center gap-2 text-sm cursor-pointer"
+                    >
+                        <i class="fa-solid fa-right-to-bracket"></i>
+                        <span>Access Admin Dashboard</span>
+                    </button>
+                </form>
+
+                <!-- Supabase Setup Helper Box -->
+                <div class="mt-6 pt-5 border-t border-slate-100 flex items-center justify-between gap-2">
+                    <span class="text-xs text-slate-500" id="adminLoginDbHint">Supabase connection status</span>
+                    <button type="button" onclick="openModal('supabaseConfigModal')" class="text-xs font-bold text-emerald-600 hover:text-emerald-800 flex items-center gap-1">
+                        <i class="fa-solid fa-database"></i>
+                        <span>Database Setup & SQL</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin Dashboard Screen -->
+        <div id="adminDashboardSection" class="hidden space-y-6">
+            
+            <!-- Dashboard Top Bar -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-2xl font-extrabold text-slate-900">Rewards Management</h1>
+                        <span id="dashModeBadge" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800">Supabase Live</span>
+                    </div>
+                    <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Register customers, manage Rand rewards balances, PINs, lock codes & messages.</p>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2.5">
+                    <button onclick="openRegisterCustomerModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm transition flex items-center gap-2">
+                        <i class="fa-solid fa-user-plus"></i>
+                        <span>Register Customer</span>
+                    </button>
+                    <button onclick="openModal('supabaseConfigModal')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-3.5 py-2.5 rounded-xl transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-database text-emerald-600"></i>
+                        <span>DB / SQL</span>
+                    </button>
+                    <button onclick="handleAdminLogout()" class="bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold px-3.5 py-2.5 rounded-xl transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                        <span>Logout</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stats Overview Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Registered Customers</span>
+                        <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                            <i class="fa-solid fa-users"></i>
+                        </div>
+                    </div>
+                    <p id="statTotalCustomers" class="text-2xl font-extrabold text-slate-900 mt-2">0</p>
+                </div>
+
+                <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Total Rewards Balance</span>
+                        <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                            <i class="fa-solid fa-coins"></i>
+                        </div>
+                    </div>
+                    <p id="statTotalRewards" class="text-2xl font-extrabold text-slate-900 mt-2">R 0.00</p>
+                </div>
+
+                <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Active Messages</span>
+                        <div class="w-8 h-8 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center">
+                            <i class="fa-solid fa-comment-dots"></i>
+                        </div>
+                    </div>
+                    <p id="statActiveMessages" class="text-2xl font-extrabold text-slate-900 mt-2">0</p>
+                </div>
+            </div>
+
+            <!-- Search & Refresh Bar -->
+            <div class="bg-white rounded-2xl border border-slate-200 p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div class="relative w-full sm:max-w-md">
+                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                    </div>
+                    <input 
+                        type="text" 
+                        id="adminSearchInput" 
+                        oninput="renderAdminCustomers()"
+                        placeholder="Search by customer name, card ID, or phone..."
+                        class="block w-full pl-10 pr-4 py-2.5 bg-slate-50 text-slate-900 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm transition"
+                    />
+                </div>
+                <button onclick="loadAdminCustomers()" class="w-full sm:w-auto bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-rotate"></i>
+                    <span>Refresh Records</span>
+                </button>
+            </div>
+
+            <!-- Customer Records Table / Responsive Grid -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div id="adminLoadingState" class="hidden p-10 text-center text-slate-500 text-sm">
+                    <i class="fa-solid fa-circle-notch fa-spin text-emerald-600 text-2xl mb-2"></i>
+                    <p>Loading Shop MODISHA Rewards members...</p>
+                </div>
+
+                <div id="adminEmptyState" class="hidden p-12 text-center">
+                    <div class="w-14 h-14 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3 text-2xl">
+                        <i class="fa-solid fa-id-card"></i>
+                    </div>
+                    <h3 class="text-base font-bold text-slate-800">No Rewards Customers Yet</h3>
+                    <p class="text-xs text-slate-500 max-w-sm mx-auto mt-1 mb-4">
+                        Click "Register Customer" to issue a Shop MODISHA Black Rewards Card with a 4-digit PIN and 3-digit lock code.
+                    </p>
+                    <button onclick="openRegisterCustomerModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition inline-flex items-center gap-2">
+                        <i class="fa-solid fa-plus"></i> Register First Customer
+                    </button>
+                </div>
+
+                <div id="adminCustomersTableWrapper" class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                                <th class="py-3.5 px-4">Customer & Card ID</th>
+                                <th class="py-3.5 px-4">Security (PIN / Lock)</th>
+                                <th class="py-3.5 px-4">Rewards Balance</th>
+                                <th class="py-3.5 px-4">Customer Message</th>
+                                <th class="py-3.5 px-4 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminCustomersTbody" class="divide-y divide-slate-100 text-sm">
+                            <!-- Rows dynamically rendered -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 mt-auto py-8 text-center text-xs text-slate-500">
+        <div class="max-w-4xl mx-auto px-4">
+            <div class="flex items-center justify-center space-x-2 mb-4">
+                <div class="w-6 h-6 rounded-md bg-emerald-600 text-white flex items-center justify-center font-bold text-xs">M</div>
+                <span class="font-bold text-slate-700 text-sm">Shop MODISHA</span>
+            </div>
+            
+            <p class="mb-4">Delivering quality products directly to your doorstep with minimal service fees.</p>
+            
+            <!-- Modal & Portal Triggers -->
+            <div class="flex flex-wrap justify-center items-center gap-4 sm:gap-6 text-emerald-600 font-medium mb-5">
+                <button type="button" onclick="openModal('privacyModal')" class="hover:underline hover:text-emerald-800 transition">Privacy Policy</button>
+                <span class="text-slate-300">•</span>
+                <button type="button" onclick="openModal('termsUseModal')" class="hover:underline hover:text-emerald-800 transition">Terms of Use</button>
+                <span class="text-slate-300">•</span>
+                <button type="button" onclick="openModal('termsCondModal')" class="hover:underline hover:text-emerald-800 transition">Terms & Conditions</button>
+                <span class="text-slate-300">•</span>
+                <button type="button" onclick="switchView('rewardsView')" class="hover:underline hover:text-emerald-800 transition">My Rewards</button>
+            </div>
+
+            <!-- Footer Management Controls (Admin & Setup DB) -->
+            <div class="flex flex-wrap justify-center items-center gap-3 mb-6">
+                <button type="button" id="nav-adminView" onclick="switchView('adminView')" class="nav-tab inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200/80 px-3.5 py-2 rounded-xl border border-slate-200 transition">
+                    <i class="fa-solid fa-shield-halved text-slate-500"></i>
+                    <span>Admin</span>
+                </button>
+                <button type="button" id="dbStatusBadge" onclick="openModal('supabaseConfigModal')" title="Configure Supabase Database" class="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200/80 px-3.5 py-2 rounded-xl border border-slate-200 transition">
+                    <span id="dbStatusDot" class="w-2 h-2 rounded-full bg-amber-500"></span>
+                    <i class="fa-solid fa-database text-emerald-600"></i>
+                    <span id="dbStatusText">Setup DB</span>
+                </button>
+            </div>
+
+            <p class="text-slate-400">&copy; <span id="yearSpan"></span> Shop MODISHA. All rights reserved. Express Checkout & Rewards Portal.</p>
+        </div>
+    </footer>
+
+    <!-- ========================================================================
+         MODAL: REGISTER / EDIT CUSTOMER REWARDS
+         ======================================================================== -->
+    <div id="customerFormModal" class="fixed inset-0 z-50 hidden overflow-y-auto modal-backdrop flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-100">
+            <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/70 rounded-t-2xl">
+                <h3 id="customerModalTitle" class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-id-card text-emerald-600"></i>
+                    <span>Register Rewards Customer</span>
+                </h3>
+                <button onclick="closeModal('customerFormModal')" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-200/60 transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form id="customerManageForm" onsubmit="handleSaveCustomer(event)" class="p-6 overflow-y-auto space-y-4 text-sm">
+                <input type="hidden" id="editCustomerId" />
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="formCustName" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                            Customer Full Name <span class="text-red-500">*</span>
+                        </label>
+                        <input type="text" id="formCustName" required placeholder="e.g. Lerato Ndlovu" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                    </div>
+
+                    <div>
+                        <label for="formCardId" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                            Black Card ID <span class="text-red-500">*</span>
+                        </label>
+                        <div class="flex gap-1.5">
+                            <input type="text" id="formCardId" required placeholder="MOD-1001" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl font-mono uppercase focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                            <button type="button" onclick="generateNewCardIdField()" title="Generate Card ID" class="px-3 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl text-slate-600">
+                                <i class="fa-solid fa-dice"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label for="formCustPhone" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                            Phone Number
+                        </label>
+                        <input type="text" id="formCustPhone" placeholder="082 000 0000" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                    </div>
+
+                    <div>
+                        <label for="formCustPin" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                            4-Digit PIN <span class="text-red-500">*</span>
+                        </label>
+                        <input type="text" id="formCustPin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required placeholder="1234" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl font-mono text-center tracking-widest focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                    </div>
+
+                    <div>
+                        <label for="formCustLock" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                            3-Digit Lock <span class="text-red-500">*</span>
+                        </label>
+                        <input type="text" id="formCustLock" inputmode="numeric" pattern="[0-9]{3}" maxlength="3" required placeholder="789" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl font-mono text-center tracking-widest focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                    </div>
+                </div>
+
+                <div>
+                    <label for="formRewardsAmount" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                        Rewards Amount (in Rands) <span class="text-red-500">*</span>
+                    </label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center font-bold text-slate-600">R</span>
+                        <input type="number" id="formRewardsAmount" step="0.01" min="0" required placeholder="0.00" class="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl font-mono font-bold focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                    </div>
+                </div>
+
+                <div>
+                    <label for="formCustMessage" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                        Rewards Page Message for Customer
+                    </label>
+                    <textarea id="formCustMessage" rows="3" placeholder="e.g. Congratulations! You earned R50 bonus rewards this month. Show this card on your next order to redeem." class="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"></textarea>
+                    <p class="text-[11px] text-slate-400 mt-1">This message appears directly below the customer's Black Card when they log in.</p>
+                </div>
+
+                <div class="pt-2 flex justify-end gap-2.5 border-t border-slate-100">
+                    <button type="button" onclick="closeModal('customerFormModal')" class="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition">
+                        Cancel
+                    </button>
+                    <button type="submit" id="saveCustomerSubmitBtn" class="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm transition flex items-center gap-2">
+                        <i class="fa-solid fa-check"></i>
+                        <span>Save Customer</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================================================
+         MODAL: QUICK ADJUST REWARDS AMOUNT (+/- RANDS)
+         ======================================================================== -->
+    <div id="quickAdjustModal" class="fixed inset-0 z-50 hidden overflow-y-auto modal-backdrop flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full shadow-2xl border border-slate-100">
+            <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/70 rounded-t-2xl">
+                <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-coins text-amber-500"></i>
+                    <span>Modify Rewards Amount</span>
+                </h3>
+                <button onclick="closeModal('quickAdjustModal')" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <p class="text-xs text-slate-500">Customer</p>
+                    <p id="adjustCustName" class="text-base font-bold text-slate-900">-</p>
+                    <p class="text-xs text-slate-500 mt-1">Current Balance: <strong id="adjustCurrentBalance" class="text-emerald-700 font-mono">R 0.00</strong></p>
+                </div>
+
+                <div>
+                    <label for="adjustDeltaAmount" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                        Amount in Rands (R)
+                    </label>
+                    <input type="number" id="adjustDeltaAmount" step="0.01" min="0" placeholder="e.g. 25.00" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl font-mono text-base font-bold focus:bg-white focus:ring-2 focus:ring-emerald-500" />
+                </div>
+
+                <div class="grid grid-cols-3 gap-2 pt-1">
+                    <button type="button" onclick="applyRewardAdjustment('add')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2.5 px-2 rounded-xl transition flex items-center justify-center gap-1">
+                        <i class="fa-solid fa-plus"></i> Add
+                    </button>
+                    <button type="button" onclick="applyRewardAdjustment('deduct')" class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold py-2.5 px-2 rounded-xl transition flex items-center justify-center gap-1">
+                        <i class="fa-solid fa-minus"></i> Deduct
+                    </button>
+                    <button type="button" onclick="applyRewardAdjustment('set')" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold py-2.5 px-2 rounded-xl transition flex items-center justify-center gap-1">
+                        <i class="fa-solid fa-equals"></i> Set Exact
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================
+         MODAL: DELETE CUSTOMER CONFIRMATION (NO NATIVE CONFIRM)
+         ======================================================================== -->
+    <div id="deleteConfirmModal" class="fixed inset-0 z-50 hidden overflow-y-auto modal-backdrop flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full shadow-2xl border border-slate-100 p-6 text-center">
+            <div class="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-3 text-xl">
+                <i class="fa-solid fa-trash-can"></i>
+            </div>
+            <h3 class="text-lg font-bold text-slate-900">Delete Customer?</h3>
+            <p class="text-xs text-slate-600 mt-1.5 leading-relaxed">
+                Are you sure you want to permanently remove <strong id="deleteTargetName" class="text-slate-900">this customer</strong> and their Black Rewards Card from Supabase?
+            </p>
+            <div class="mt-5 flex gap-2.5">
+                <button type="button" onclick="closeModal('deleteConfirmModal')" class="flex-1 py-2.5 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition">
+                    Cancel
+                </button>
+                <button type="button" onclick="confirmDeleteCustomer()" class="flex-1 py-2.5 rounded-xl text-xs font-bold text-white bg-red-600 hover:bg-red-700 transition">
+                    Yes, Delete
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================
+         MODAL: SUPABASE DATABASE CONFIGURATION & SQL SETUP
+         ======================================================================== -->
+    <div id="supabaseConfigModal" class="fixed inset-0 z-50 hidden overflow-y-auto modal-backdrop flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-100">
+            <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/70 rounded-t-2xl">
+                <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-database text-emerald-600"></i>
+                    <span>Supabase Database Configuration</span>
+                </h3>
+                <button onclick="closeModal('supabaseConfigModal')" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-200/60 transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="p-6 overflow-y-auto space-y-5 text-sm">
+                <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 text-xs text-emerald-900 leading-relaxed">
+                    <strong>How it works:</strong> Paste your Supabase Project URL and Public Anon Key below to connect live to your Supabase PostgreSQL database. Run the SQL script below in your Supabase SQL Editor to create the tables and seed the admin password (<code class="font-mono font-bold">#PetalChain_25</code>).
+                </div>
+
+                <form onsubmit="saveSupabaseCredentials(event)" class="space-y-3">
+                    <div>
+                        <label for="sbUrlInput" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                            Supabase Project URL
+                        </label>
+                        <input type="url" id="sbUrlInput" placeholder="https://your-project-ref.supabase.co" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl font-mono text-xs focus:bg-white focus:ring-2 focus:ring-emerald-500" />
+                    </div>
+                    <div>
+                        <label for="sbKeyInput" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                            Supabase Anon Public Key
+                        </label>
+                        <input type="text" id="sbKeyInput" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl font-mono text-xs focus:bg-white focus:ring-2 focus:ring-emerald-500" />
+                    </div>
+                    <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+                        <button type="button" onclick="clearSupabaseCredentials()" class="text-xs font-semibold text-red-600 hover:underline">
+                            Disconnect / Use Local Demo Mode
+                        </button>
+                        <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-plug"></i>
+                            <span>Save & Connect Supabase</span>
+                        </button>
+                    </div>
+                </form>
+
+                <div class="border-t border-slate-200 pt-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-700">Required Supabase SQL Schema</span>
+                        <button type="button" onclick="copySqlScript()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5">
+                            <i class="fa-regular fa-copy"></i>
+                            <span>Copy SQL</span>
+                        </button>
+                    </div>
+                    <pre id="supabaseSqlCode" class="bg-slate-900 text-emerald-300 p-4 rounded-xl text-[11px] font-mono overflow-x-auto leading-relaxed select-all">-- 1. Admin Settings Table (Stores #PetalChain_25)
+CREATE TABLE IF NOT EXISTS admin_settings (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    password TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Seed Admin Password
+INSERT INTO admin_settings (password)
+SELECT '#PetalChain_25'
+WHERE NOT EXISTS (SELECT 1 FROM admin_settings WHERE password = '#PetalChain_25');
+
+-- 2. Shop MODISHA Rewards Customers Table
+CREATE TABLE IF NOT EXISTS rewards_customers (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    card_id TEXT UNIQUE NOT NULL,
+    full_name TEXT NOT NULL,
+    phone TEXT,
+    pin VARCHAR(4) NOT NULL,
+    lock_code VARCHAR(3) NOT NULL,
+    rewards_amount NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+    message TEXT DEFAULT 'Welcome to Shop MODISHA Rewards!',
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 3. Enable Public API Access (RLS Policies for Client App)
+ALTER TABLE admin_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE rewards_customers ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow read admin_settings" ON admin_settings;
+CREATE POLICY "Allow read admin_settings" ON admin_settings FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Allow full access rewards_customers" ON rewards_customers;
+CREATE POLICY "Allow full access rewards_customers" ON rewards_customers FOR ALL USING (true) WITH CHECK (true);</pre>
+                </div>
+            </div>
+
+            <div class="px-6 py-3.5 border-t border-slate-200 bg-slate-50/70 flex justify-end rounded-b-2xl">
+                <button onclick="closeModal('supabaseConfigModal')" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold px-4 py-2 rounded-xl transition">
+                    Done
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 1. PRIVACY POLICY MODAL -->
+    <div id="privacyModal" class="fixed inset-0 z-50 hidden overflow-y-auto modal-backdrop flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-slate-100 transform transition-all">
+            <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50 rounded-t-2xl">
+                <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-user-shield text-emerald-600"></i> Privacy Policy
+                </h3>
+                <button onclick="closeModal('privacyModal')" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-200/60 transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto text-sm text-slate-600 space-y-4 leading-relaxed">
+                <p>At <strong>Shop MODISHA</strong>, accessible through our express PWA web portal, we are committed to maintaining the trust and confidence of our customers. This Privacy Policy outlines how your personal information is handled.</p>
+
+                <h4 class="font-bold text-slate-800 text-base">1. Information We Collect</h4>
+                <p>When placing an order using our web form, we require specific details necessary for completing your transaction, including your Full Name, list of shopping items, budget/cash amount, and preferred payment method. For Shop MODISHA Rewards members, we store your name, Card ID, PIN, Lock Code, and rewards balance in our secure Supabase database.</p>
+
+                <h4 class="font-bold text-slate-800 text-base">2. How Your Information Is Processed</h4>
+                <p>Your order data is formatted directly on your device into a pre-structured message sent straight to our WhatsApp business line (0824598656). Rewards balances are managed strictly by authorized Shop MODISHA administrators.</p>
+
+                <h4 class="font-bold text-slate-800 text-base">3. Communication</h4>
+                <p>We only use your provided contact information (WhatsApp number and provided name) to confirm order fulfillment, total prices, rewards updates, and schedule delivery to your location.</p>
+
+                <h4 class="font-bold text-slate-800 text-base">4. Data Security & Storage</h4>
+                <p>WhatsApp provides end-to-end encryption for chat communications. Offline form drafts are stored strictly on your local browser cache and are never shared.</p>
+            </div>
+            <div class="px-6 py-3.5 border-t border-slate-200 bg-slate-50/50 flex justify-end rounded-b-2xl">
+                <button onclick="closeModal('privacyModal')" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold px-4 py-2 rounded-xl transition">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. TERMS OF USE MODAL -->
+    <div id="termsUseModal" class="fixed inset-0 z-50 hidden overflow-y-auto modal-backdrop flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-slate-100 transform transition-all">
+            <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50 rounded-t-2xl">
+                <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-file-contract text-emerald-600"></i> Terms of Use
+                </h3>
+                <button onclick="closeModal('termsUseModal')" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-200/60 transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto text-sm text-slate-600 space-y-4 leading-relaxed">
+                <p>Welcome to <strong>Shop MODISHA</strong>. By accessing and using this web application or installed PWA to place orders or view rewards, you accept and agree to abide by the following terms of use.</p>
+
+                <h4 class="font-bold text-slate-800 text-base">1. Acceptable Use</h4>
+                <p>You agree to use this site exclusively for submitting legitimate order requests and checking your personal Shop MODISHA Rewards card. Any spamming, unauthorized access attempts, or fraudulent requests are strictly prohibited.</p>
+
+                <h4 class="font-bold text-slate-800 text-base">2. Product Availability & Rewards</h4>
+                <p>Submitting an order form via this site generates a request. Availability of listed items is subject to local stock. Rewards balances in Rands are redeemable subject to Shop MODISHA store terms.</p>
+
+                <h4 class="font-bold text-slate-800 text-base">3. Security of PIN & Lock Code</h4>
+                <p>Rewards cardholders are responsible for keeping their 4-digit PIN and 3-digit Lock Code confidential.</p>
+            </div>
+            <div class="px-6 py-3.5 border-t border-slate-200 bg-slate-50/50 flex justify-end rounded-b-2xl">
+                <button onclick="closeModal('termsUseModal')" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold px-4 py-2 rounded-xl transition">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. TERMS & CONDITIONS MODAL -->
+    <div id="termsCondModal" class="fixed inset-0 z-50 hidden overflow-y-auto modal-backdrop flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-slate-100 transform transition-all">
+            <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50 rounded-t-2xl">
+                <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-scale-balanced text-emerald-600"></i> Terms & Conditions
+                </h3>
+                <button onclick="closeModal('termsCondModal')" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-200/60 transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto text-sm text-slate-600 space-y-4 leading-relaxed">
+                <p>These Terms & Conditions govern all sales, delivery services, and loyalty rewards provided by <strong>Shop MODISHA</strong>.</p>
+
+                <h4 class="font-bold text-slate-800 text-base">1. Delivery Fee Policy</h4>
+                <p>A standard delivery fee of <strong>R5</strong> applies to all dispatched orders. This fee is automatically noted on your WhatsApp order breakdown and will be added to the final order invoice upon fulfillment.</p>
+
+                <h4 class="font-bold text-slate-800 text-base">2. Payment Methods</h4>
+                <p>We accept Cash and Card payments upon delivery or pickup. If Cash is selected, please ensure you have sufficient physical tender as specified in your form submission.</p>
+
+                <h4 class="font-bold text-slate-800 text-base">3. Shop MODISHA Black Rewards Card</h4>
+                <p>Rewards balances are denominated in South African Rands (R) and have no cash-out value outside Shop MODISHA purchases unless explicitly authorized by management.</p>
+
+                <h4 class="font-bold text-slate-800 text-base">4. Contact Information</h4>
+                <p>For inquiries, support, or direct communication, our customer helpline is reachable at WhatsApp: <strong>0824598656</strong>.</p>
+            </div>
+            <div class="px-6 py-3.5 border-t border-slate-200 bg-slate-50/50 flex justify-end rounded-b-2xl">
+                <button onclick="closeModal('termsCondModal')" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold px-4 py-2 rounded-xl transition">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Set dynamic current year
+        document.getElementById('yearSpan').textContent = new Date().getFullYear();
+
+        /* ==========================================================================
+           0. CUSTOM TOAST NOTIFICATIONS (REPLACES NATIVE ALERT/CONFIRM)
+           ========================================================================== */
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            const colors = {
+                success: 'bg-slate-900 text-white border-emerald-500',
+                error: 'bg-red-950 text-white border-red-500',
+                info: 'bg-slate-800 text-white border-amber-400'
+            };
+            const icons = {
+                success: '<i class="fa-solid fa-circle-check text-emerald-400"></i>',
+                error: '<i class="fa-solid fa-circle-exclamation text-red-400"></i>',
+                info: '<i class="fa-solid fa-circle-info text-amber-400"></i>'
+            };
+
+            toast.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border-l-4 text-xs font-semibold transition-all duration-300 transform translate-y-2 opacity-0 ${colors[type] || colors.info}`;
+            toast.innerHTML = `${icons[type] || icons.info}<span class="flex-1">${escapeHtml(message)}</span>`;
+            container.appendChild(toast);
+
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            });
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3800);
+        }
+
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function formatRands(amount) {
+            const num = parseFloat(amount) || 0;
+            return 'R ' + num.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        /* ==========================================================================
+           1. SUPABASE DATABASE CLIENT & FALLBACK STORAGE LAYER
+           ========================================================================== */
+        // Optional hardcoded defaults (or configured via UI & saved in localStorage)
+        const DEFAULT_SUPABASE_URL = '';
+        const DEFAULT_SUPABASE_ANON_KEY = '';
+        const DEFAULT_ADMIN_SEED_PASS = '#PetalChain_25';
+
+        let supabaseClient = null;
+        let isSupabaseConnected = false;
+
+        // Local fallback seed data when Supabase URL/Key haven't been entered yet
+        const LOCAL_CUSTOMERS_KEY = 'modisha_rewards_local_customers_v1';
+        const LOCAL_ADMIN_PASS_KEY = 'modisha_admin_seed_pass_v1';
+
+        function initLocalFallbackSeed() {
+            if (!localStorage.getItem(LOCAL_ADMIN_PASS_KEY)) {
+                localStorage.setItem(LOCAL_ADMIN_PASS_KEY, DEFAULT_ADMIN_SEED_PASS);
+            }
+            if (!localStorage.getItem(LOCAL_CUSTOMERS_KEY)) {
+                const sampleCustomers = [
+                    {
+                        id: 'demo-1001',
+                        card_id: 'MOD-1001',
+                        full_name: 'Thabo Mokoena',
+                        phone: '082 555 0101',
+                        pin: '1234',
+                        lock_code: '789',
+                        rewards_amount: 145.50,
+                        message: 'Thank you for being a loyal Shop MODISHA VIP member! Enjoy R145.50 in your rewards wallet.',
+                        updated_at: new Date().toISOString()
+                    }
+                ];
+                localStorage.setItem(LOCAL_CUSTOMERS_KEY, JSON.stringify(sampleCustomers));
+            }
+        }
+
+        function initSupabase() {
+            initLocalFallbackSeed();
+            const url = (localStorage.getItem('modisha_sb_url') || DEFAULT_SUPABASE_URL).trim();
+            const key = (localStorage.getItem('modisha_sb_key') || DEFAULT_SUPABASE_ANON_KEY).trim();
+
+            document.getElementById('sbUrlInput').value = url;
+            document.getElementById('sbKeyInput').value = key;
+
+            const dot = document.getElementById('dbStatusDot');
+            const text = document.getElementById('dbStatusText');
+            const hint = document.getElementById('adminLoginDbHint');
+            const dashBadge = document.getElementById('dashModeBadge');
+
+            if (url && key && window.supabase) {
+                try {
+                    supabaseClient = window.supabase.createClient(url, key);
+                    isSupabaseConnected = true;
+                    dot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-pulse';
+                    text.textContent = 'Setup DB (Live)';
+                    if (hint) hint.innerHTML = '<span class="text-emerald-600 font-bold"><i class="fa-solid fa-circle-check"></i> Connected to Supabase</span>';
+                    if (dashBadge) {
+                        dashBadge.textContent = 'Supabase Live';
+                        dashBadge.className = 'text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800';
+                    }
+                } catch (err) {
+                    console.error('Supabase initialization error:', err);
+                    isSupabaseConnected = false;
+                }
+            } else {
+                supabaseClient = null;
+                isSupabaseConnected = false;
+                dot.className = 'w-2 h-2 rounded-full bg-amber-500';
+                text.textContent = 'Setup DB';
+                if (hint) hint.innerHTML = '<span class="text-amber-600 font-semibold"><i class="fa-solid fa-triangle-exclamation"></i> Local Sandbox Mode (Click Setup DB)</span>';
+                if (dashBadge) {
+                    dashBadge.textContent = 'Local Demo Mode';
+                    dashBadge.className = 'text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800';
+                }
+            }
+        }
+
+        function saveSupabaseCredentials(event) {
+            event.preventDefault();
+            const url = document.getElementById('sbUrlInput').value.trim();
+            const key = document.getElementById('sbKeyInput').value.trim();
+
+            if (!url || !key) {
+                showToast('Please enter both Supabase URL and Anon Key.', 'error');
+                return;
+            }
+
+            localStorage.setItem('modisha_sb_url', url);
+            localStorage.setItem('modisha_sb_key', key);
+            initSupabase();
+            closeModal('supabaseConfigModal');
+            showToast('Supabase credentials saved & connected!', 'success');
+
+            if (isAdminAuthenticated) {
+                loadAdminCustomers();
+            }
+        }
+
+        function clearSupabaseCredentials() {
+            localStorage.removeItem('modisha_sb_url');
+            localStorage.removeItem('modisha_sb_key');
+            initSupabase();
+            showToast('Disconnected Supabase. Switched to local storage mode.', 'info');
+            if (isAdminAuthenticated) {
+                loadAdminCustomers();
+            }
+        }
+
+        function copySqlScript() {
+            const sqlText = document.getElementById('supabaseSqlCode').textContent;
+            const textarea = document.createElement('textarea');
+            textarea.value = sqlText;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            showToast('SQL schema copied to clipboard!', 'success');
+        }
+
+        /* ==========================================================================
+           2. VIEW NAVIGATION SWITCHER
+           ========================================================================== */
+        function switchView(viewId) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+            const target = document.getElementById(viewId);
+            if (target) target.classList.remove('hidden');
+
+            document.querySelectorAll('.nav-tab').forEach(btn => {
+                btn.classList.remove('bg-white', 'text-emerald-700', 'shadow-xs', 'ring-2', 'ring-emerald-500/40');
+                btn.classList.add('text-slate-600');
+            });
+
+            const activeNav = document.getElementById('nav-' + viewId);
+            if (activeNav) {
+                activeNav.classList.add('bg-white', 'text-emerald-700', 'shadow-xs');
+                activeNav.classList.remove('text-slate-600');
+                if (viewId === 'adminView') {
+                    activeNav.classList.add('ring-2', 'ring-emerald-500/40');
+                }
+            }
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        /* ==========================================================================
+           3. CUSTOMER REWARDS PORTAL (4-DIGIT PIN + 3-DIGIT LOCK CODE)
+           ========================================================================== */
+        let activeCustomerRecord = null;
+
+        async function handleCustomerUnlock(event) {
+            event.preventDefault();
+            const cardId = document.getElementById('custCardIdInput').value.trim().toUpperCase();
+            const pin = document.getElementById('custPinInput').value.trim();
+            const lockCode = document.getElementById('custLockInput').value.trim();
+            const errorBox = document.getElementById('customerLoginError');
+            const errorText = document.getElementById('customerLoginErrorText');
+            const btn = document.getElementById('unlockRewardsBtn');
+
+            errorBox.classList.add('hidden');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> <span>Verifying Credentials...</span>';
+
+            try {
+                let matchedCustomer = null;
+
+                if (isSupabaseConnected && supabaseClient) {
+                    let query = supabaseClient
+                        .from('rewards_customers')
+                        .select('*')
+                        .eq('pin', pin)
+                        .eq('lock_code', lockCode);
+
+                    if (cardId) {
+                        query = query.ilike('card_id', cardId);
+                    }
+
+                    const { data, error } = await query;
+                    if (error) throw error;
+
+                    if (data && data.length > 1 && !cardId) {
+                        throw new Error('Multiple cards share this PIN & Lock. Please enter your Card ID as well.');
+                    }
+                    if (data && data.length === 1) {
+                        matchedCustomer = data[0];
+                    }
+                } else {
+                    // Local storage fallback lookup
+                    const list = JSON.parse(localStorage.getItem(LOCAL_CUSTOMERS_KEY) || '[]');
+                    const matches = list.filter(c => {
+                        const pinMatch = String(c.pin) === pin && String(c.lock_code) === lockCode;
+                        if (!pinMatch) return false;
+                        if (cardId) return String(c.card_id).toUpperCase() === cardId;
+                        return true;
+                    });
+                    if (matches.length > 1 && !cardId) {
+                        throw new Error('Multiple cards share this PIN & Lock. Please enter your Card ID as well.');
+                    }
+                    if (matches.length === 1) {
+                        matchedCustomer = matches[0];
+                    }
+                }
+
+                if (!matchedCustomer) {
+                    errorText.textContent = 'Invalid 4-digit PIN, 3-digit Lock Code, or Card ID.';
+                    errorBox.classList.remove('hidden');
+                } else {
+                    activeCustomerRecord = matchedCustomer;
+                    renderCustomerBlackCard(matchedCustomer);
+                    document.getElementById('customerLoginSection').classList.add('hidden');
+                    document.getElementById('customerCardSection').classList.remove('hidden');
+                    showToast(`Welcome back, ${matchedCustomer.full_name}!`, 'success');
+                }
+            } catch (err) {
+                console.error('Customer unlock error:', err);
+                errorText.textContent = err.message || 'Unable to verify rewards account. Check database connection.';
+                errorBox.classList.remove('hidden');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-unlock-keyhole text-amber-400"></i> <span>Unlock My Black Card</span>';
+            }
+        }
+
+        function renderCustomerBlackCard(customer) {
+            document.getElementById('cardCustomerName').textContent = customer.full_name || 'MEMBER';
+            document.getElementById('cardCustomerId').textContent = customer.card_id || 'MOD-0000';
+            document.getElementById('cardRewardsBalance').textContent = formatRands(customer.rewards_amount);
+            
+            const msgEl = document.getElementById('cardAdminMessage');
+            if (customer.message && customer.message.trim().length > 0) {
+                msgEl.textContent = customer.message;
+            } else {
+                msgEl.textContent = 'Welcome to Shop MODISHA Rewards! Your rewards balance in Rands is active and ready.';
+            }
+        }
+
+        async function refreshCustomerCard() {
+            if (!activeCustomerRecord) return;
+            try {
+                if (isSupabaseConnected && supabaseClient) {
+                    const { data, error } = await supabaseClient
+                        .from('rewards_customers')
+                        .select('*')
+                        .eq('id', activeCustomerRecord.id)
+                        .single();
+                    if (error) throw error;
+                    if (data) {
+                        activeCustomerRecord = data;
+                        renderCustomerBlackCard(data);
+                        showToast('Rewards balance updated!', 'success');
+                    }
+                } else {
+                    const list = JSON.parse(localStorage.getItem(LOCAL_CUSTOMERS_KEY) || '[]');
+                    const found = list.find(c => c.id === activeCustomerRecord.id);
+                    if (found) {
+                        activeCustomerRecord = found;
+                        renderCustomerBlackCard(found);
+                        showToast('Rewards balance updated!', 'success');
+                    }
+                }
+            } catch (err) {
+                showToast('Could not refresh balance.', 'error');
+            }
+        }
+
+        function lockCustomerCard() {
+            activeCustomerRecord = null;
+            document.getElementById('custPinInput').value = '';
+            document.getElementById('custLockInput').value = '';
+            document.getElementById('customerCardSection').classList.add('hidden');
+            document.getElementById('customerLoginSection').classList.remove('hidden');
+            showToast('Rewards card locked.', 'info');
+        }
+
+        /* ==========================================================================
+           4. ADMIN PORTAL AUTHENTICATION (PASSWORD: #PetalChain_25 IN SUPABASE)
+           ========================================================================== */
+        let isAdminAuthenticated = false;
+        let adminCustomersList = [];
+        let adjustingCustomerId = null;
+        let deletingCustomerId = null;
+
+        function toggleAdminPassVisibility() {
+            const input = document.getElementById('adminPasswordInput');
+            const eye = document.getElementById('adminPassEye');
+            if (input.type === 'password') {
+                input.type = 'text';
+                eye.className = 'fa-regular fa-eye-slash';
+            } else {
+                input.type = 'password';
+                eye.className = 'fa-regular fa-eye';
+            }
+        }
+
+        async function handleAdminLogin(event) {
+            event.preventDefault();
+            const enteredPassword = document.getElementById('adminPasswordInput').value;
+            const errorBox = document.getElementById('adminLoginError');
+            const errorText = document.getElementById('adminLoginErrorText');
+            const btn = document.getElementById('adminLoginBtn');
+
+            errorBox.classList.add('hidden');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> <span>Authenticating...</span>';
+
+            try {
+                let valid = false;
+
+                if (isSupabaseConnected && supabaseClient) {
+                    // Verify password against Supabase `admin_settings` table
+                    const { data, error } = await supabaseClient
+                        .from('admin_settings')
+                        .select('password')
+                        .eq('password', enteredPassword)
+                        .limit(1);
+
+                    if (error) {
+                        throw new Error(`Supabase error (${error.message}). Make sure you ran the SQL setup script!`);
+                    }
+
+                    if (data && data.length > 0) {
+                        valid = true;
+                    }
+                } else {
+                    // Local fallback check against seeded #PetalChain_25
+                    const storedPass = localStorage.getItem(LOCAL_ADMIN_PASS_KEY) || DEFAULT_ADMIN_SEED_PASS;
+                    if (enteredPassword === storedPass) {
+                        valid = true;
+                    }
+                }
+
+                if (valid) {
+                    isAdminAuthenticated = true;
+                    document.getElementById('adminPasswordInput').value = '';
+                    document.getElementById('adminLoginSection').classList.add('hidden');
+                    document.getElementById('adminDashboardSection').classList.remove('hidden');
+                    showToast('Admin authenticated successfully.', 'success');
+                    await loadAdminCustomers();
+                } else {
+                    errorText.textContent = 'Invalid admin password. Please verify and try again.';
+                    errorBox.classList.remove('hidden');
+                }
+            } catch (err) {
+                console.error('Admin login error:', err);
+                errorText.textContent = err.message || 'Authentication error.';
+                errorBox.classList.remove('hidden');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> <span>Access Admin Dashboard</span>';
+            }
+        }
+
+        function handleAdminLogout() {
+            isAdminAuthenticated = false;
+            adminCustomersList = [];
+            document.getElementById('adminDashboardSection').classList.add('hidden');
+            document.getElementById('adminLoginSection').classList.remove('hidden');
+            showToast('Logged out of Admin Portal.', 'info');
+        }
+
+        /* ==========================================================================
+           5. ADMIN CRUD OPERATIONS (SUPABASE + LOCAL FALLBACK)
+           ========================================================================== */
+        async function loadAdminCustomers() {
+            const loadingEl = document.getElementById('adminLoadingState');
+            const emptyEl = document.getElementById('adminEmptyState');
+            const tableWrap = document.getElementById('adminCustomersTableWrapper');
+
+            loadingEl.classList.remove('hidden');
+            emptyEl.classList.add('hidden');
+            tableWrap.classList.add('hidden');
+
+            try {
+                if (isSupabaseConnected && supabaseClient) {
+                    const { data, error } = await supabaseClient
+                        .from('rewards_customers')
+                        .select('*')
+                        .order('updated_at', { ascending: false });
+
+                    if (error) throw error;
+                    adminCustomersList = data || [];
+                } else {
+                    adminCustomersList = JSON.parse(localStorage.getItem(LOCAL_CUSTOMERS_KEY) || '[]');
+                }
+
+                updateAdminStats();
+                renderAdminCustomers();
+            } catch (err) {
+                console.error('Error loading customers:', err);
+                showToast('Failed to load customers: ' + (err.message || 'Unknown error'), 'error');
+            } finally {
+                loadingEl.classList.add('hidden');
+            }
+        }
+
+        function updateAdminStats() {
+            const totalCustomers = adminCustomersList.length;
+            const totalRewards = adminCustomersList.reduce((sum, c) => sum + (parseFloat(c.rewards_amount) || 0), 0);
+            const activeMessages = adminCustomersList.filter(c => c.message && c.message.trim().length > 0).length;
+
+            document.getElementById('statTotalCustomers').textContent = totalCustomers;
+            document.getElementById('statTotalRewards').textContent = formatRands(totalRewards);
+            document.getElementById('statActiveMessages').textContent = activeMessages;
+        }
+
+        function renderAdminCustomers() {
+            const query = (document.getElementById('adminSearchInput').value || '').trim().toLowerCase();
+            const tbody = document.getElementById('adminCustomersTbody');
+            const emptyEl = document.getElementById('adminEmptyState');
+            const tableWrap = document.getElementById('adminCustomersTableWrapper');
+
+            const filtered = adminCustomersList.filter(c => {
+                if (!query) return true;
+                return (
+                    (c.full_name && c.full_name.toLowerCase().includes(query)) ||
+                    (c.card_id && c.card_id.toLowerCase().includes(query)) ||
+                    (c.phone && c.phone.toLowerCase().includes(query))
+                );
+            });
+
+            if (filtered.length === 0) {
+                tableWrap.classList.add('hidden');
+                emptyEl.classList.remove('hidden');
+                return;
+            }
+
+            emptyEl.classList.add('hidden');
+            tableWrap.classList.remove('hidden');
+
+            tbody.innerHTML = filtered.map(c => `
+                <tr class="hover:bg-slate-50/80 transition">
+                    <td class="py-3.5 px-4">
+                        <div class="font-bold text-slate-900">${escapeHtml(c.full_name)}</div>
+                        <div class="flex items-center gap-2 mt-0.5">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-mono font-bold bg-zinc-900 text-amber-400">
+                                ${escapeHtml(c.card_id)}
+                            </span>
+                            ${c.phone ? `<span class="text-xs text-slate-400">${escapeHtml(c.phone)}</span>` : ''}
+                        </div>
+                    </td>
+                    <td class="py-3.5 px-4">
+                        <div class="flex items-center gap-2 text-xs font-mono">
+                            <span class="bg-slate-100 border border-slate-200 px-2 py-1 rounded-lg text-slate-700" title="4-Digit PIN">
+                                PIN: <strong>${escapeHtml(c.pin)}</strong>
+                            </span>
+                            <span class="bg-slate-100 border border-slate-200 px-2 py-1 rounded-lg text-slate-700" title="3-Digit Lock Code">
+                                Lock: <strong>${escapeHtml(c.lock_code)}</strong>
+                            </span>
+                        </div>
+                    </td>
+                    <td class="py-3.5 px-4">
+                        <span class="font-mono font-extrabold text-emerald-700 text-base">
+                            ${formatRands(c.rewards_amount)}
+                        </span>
+                    </td>
+                    <td class="py-3.5 px-4 max-w-xs">
+                        <p class="text-xs text-slate-600 line-clamp-2" title="${escapeHtml(c.message || '')}">
+                            ${c.message ? escapeHtml(c.message) : '<span class="italic text-slate-400">No custom message</span>'}
+                        </p>
+                    </td>
+                    <td class="py-3.5 px-4 text-right whitespace-nowrap">
+                        <div class="inline-flex items-center gap-1.5">
+                            <button onclick="openQuickAdjustModal('${escapeHtml(c.id)}')" title="Modify Rewards Balance" class="bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold px-2.5 py-1.5 rounded-lg transition">
+                                <i class="fa-solid fa-coins"></i> +/- R
+                            </button>
+                            <button onclick="openEditCustomerModal('${escapeHtml(c.id)}')" title="Edit Customer Details & Message" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-2.5 py-1.5 rounded-lg transition">
+                                <i class="fa-solid fa-pen-to-square"></i> Edit
+                            </button>
+                            <button onclick="openDeleteConfirmModal('${escapeHtml(c.id)}')" title="Delete Customer" class="bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold px-2.5 py-1.5 rounded-lg transition">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function generateNewCardIdField() {
+            const randomDigits = Math.floor(1000 + Math.random() * 9000);
+            document.getElementById('formCardId').value = `MOD-${randomDigits}`;
+        }
+
+        function openRegisterCustomerModal() {
+            document.getElementById('customerModalTitle').innerHTML = '<i class="fa-solid fa-user-plus text-emerald-600"></i> <span>Register New Rewards Customer</span>';
+            document.getElementById('editCustomerId').value = '';
+            document.getElementById('formCustName').value = '';
+            generateNewCardIdField();
+            document.getElementById('formCustPhone').value = '';
+            document.getElementById('formCustPin').value = '';
+            document.getElementById('formCustLock').value = '';
+            document.getElementById('formRewardsAmount').value = '0.00';
+            document.getElementById('formCustMessage').value = 'Welcome to Shop MODISHA Rewards! Earn Rands on every order.';
+            openModal('customerFormModal');
+        }
+
+        function openEditCustomerModal(customerId) {
+            const cust = adminCustomersList.find(c => String(c.id) === String(customerId));
+            if (!cust) return;
+
+            document.getElementById('customerModalTitle').innerHTML = '<i class="fa-solid fa-pen-to-square text-emerald-600"></i> <span>Edit Customer & Rewards</span>';
+            document.getElementById('editCustomerId').value = cust.id;
+            document.getElementById('formCustName').value = cust.full_name || '';
+            document.getElementById('formCardId').value = cust.card_id || '';
+            document.getElementById('formCustPhone').value = cust.phone || '';
+            document.getElementById('formCustPin').value = cust.pin || '';
+            document.getElementById('formCustLock').value = cust.lock_code || '';
+            document.getElementById('formRewardsAmount').value = parseFloat(cust.rewards_amount || 0).toFixed(2);
+            document.getElementById('formCustMessage').value = cust.message || '';
+            openModal('customerFormModal');
+        }
+
+        async function handleSaveCustomer(event) {
+            event.preventDefault();
+            const existingId = document.getElementById('editCustomerId').value.trim();
+            const fullName = document.getElementById('formCustName').value.trim();
+            const cardId = document.getElementById('formCardId').value.trim().toUpperCase();
+            const phone = document.getElementById('formCustPhone').value.trim();
+            const pin = document.getElementById('formCustPin').value.trim();
+            const lockCode = document.getElementById('formCustLock').value.trim();
+            const rewardsAmount = parseFloat(document.getElementById('formRewardsAmount').value) || 0;
+            const message = document.getElementById('formCustMessage').value.trim();
+
+            if (!/^\d{4}$/.test(pin)) {
+                showToast('PIN must be exactly 4 digits.', 'error');
+                return;
+            }
+            if (!/^\d{3}$/.test(lockCode)) {
+                showToast('Lock code must be exactly 3 digits.', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('saveCustomerSubmitBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> <span>Saving...</span>';
+
+            const payload = {
+                full_name: fullName,
+                card_id: cardId,
+                phone: phone,
+                pin: pin,
+                lock_code: lockCode,
+                rewards_amount: rewardsAmount,
+                message: message,
+                updated_at: new Date().toISOString()
+            };
+
+            try {
+                if (isSupabaseConnected && supabaseClient) {
+                    if (existingId) {
+                        const { error } = await supabaseClient
+                            .from('rewards_customers')
+                            .update(payload)
+                            .eq('id', existingId);
+                        if (error) throw error;
+                        showToast('Customer record updated in Supabase!', 'success');
+                    } else {
+                        const { error } = await supabaseClient
+                            .from('rewards_customers')
+                            .insert([payload]);
+                        if (error) throw error;
+                        showToast('New rewards customer registered in Supabase!', 'success');
+                    }
+                } else {
+                    const list = JSON.parse(localStorage.getItem(LOCAL_CUSTOMERS_KEY) || '[]');
+                    if (existingId) {
+                        const idx = list.findIndex(c => String(c.id) === String(existingId));
+                        if (idx !== -1) {
+                            list[idx] = { ...list[idx], ...payload };
+                        }
+                        showToast('Customer record updated!', 'success');
+                    } else {
+                        list.unshift({
+                            id: 'local-' + Date.now(),
+                            ...payload
+                        });
+                        showToast('New customer registered!', 'success');
+                    }
+                    localStorage.setItem(LOCAL_CUSTOMERS_KEY, JSON.stringify(list));
+                }
+
+                closeModal('customerFormModal');
+                await loadAdminCustomers();
+            } catch (err) {
+                console.error('Save customer error:', err);
+                showToast('Error saving customer: ' + (err.message || 'Check unique Card ID'), 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-check"></i> <span>Save Customer</span>';
+            }
+        }
+
+        function openQuickAdjustModal(customerId) {
+            const cust = adminCustomersList.find(c => String(c.id) === String(customerId));
+            if (!cust) return;
+            adjustingCustomerId = cust.id;
+            document.getElementById('adjustCustName').textContent = `${cust.full_name} (${cust.card_id})`;
+            document.getElementById('adjustCurrentBalance').textContent = formatRands(cust.rewards_amount);
+            document.getElementById('adjustDeltaAmount').value = '';
+            openModal('quickAdjustModal');
+        }
+
+        async function applyRewardAdjustment(mode) {
+            if (!adjustingCustomerId) return;
+            const cust = adminCustomersList.find(c => String(c.id) === String(adjustingCustomerId));
+            if (!cust) return;
+
+            const delta = parseFloat(document.getElementById('adjustDeltaAmount').value);
+            if (isNaN(delta) || delta < 0) {
+                showToast('Please enter a valid positive Rand amount.', 'error');
+                return;
+            }
+
+            const current = parseFloat(cust.rewards_amount) || 0;
+            let newAmount = current;
+
+            if (mode === 'add') newAmount = current + delta;
+            if (mode === 'deduct') newAmount = Math.max(0, current - delta);
+            if (mode === 'set') newAmount = delta;
+
+            newAmount = Math.round(newAmount * 100) / 100;
+
+            try {
+                if (isSupabaseConnected && supabaseClient) {
+                    const { error } = await supabaseClient
+                        .from('rewards_customers')
+                        .update({ rewards_amount: newAmount, updated_at: new Date().toISOString() })
+                        .eq('id', adjustingCustomerId);
+                    if (error) throw error;
+                } else {
+                    const list = JSON.parse(localStorage.getItem(LOCAL_CUSTOMERS_KEY) || '[]');
+                    const idx = list.findIndex(c => String(c.id) === String(adjustingCustomerId));
+                    if (idx !== -1) {
+                        list[idx].rewards_amount = newAmount;
+                        list[idx].updated_at = new Date().toISOString();
+                        localStorage.setItem(LOCAL_CUSTOMERS_KEY, JSON.stringify(list));
+                    }
+                }
+
+                closeModal('quickAdjustModal');
+                showToast(`Rewards balance updated to ${formatRands(newAmount)}`, 'success');
+                await loadAdminCustomers();
+            } catch (err) {
+                showToast('Failed to update rewards balance: ' + err.message, 'error');
+            }
+        }
+
+        function openDeleteConfirmModal(customerId) {
+            const cust = adminCustomersList.find(c => String(c.id) === String(customerId));
+            if (!cust) return;
+            deletingCustomerId = cust.id;
+            document.getElementById('deleteTargetName').textContent = `${cust.full_name} (${cust.card_id})`;
+            openModal('deleteConfirmModal');
+        }
+
+        async function confirmDeleteCustomer() {
+            if (!deletingCustomerId) return;
+            try {
+                if (isSupabaseConnected && supabaseClient) {
+                    const { error } = await supabaseClient
+                        .from('rewards_customers')
+                        .delete()
+                        .eq('id', deletingCustomerId);
+                    if (error) throw error;
+                } else {
+                    let list = JSON.parse(localStorage.getItem(LOCAL_CUSTOMERS_KEY) || '[]');
+                    list = list.filter(c => String(c.id) !== String(deletingCustomerId));
+                    localStorage.setItem(LOCAL_CUSTOMERS_KEY, JSON.stringify(list));
+                }
+
+                closeModal('deleteConfirmModal');
+                deletingCustomerId = null;
+                showToast('Customer deleted successfully.', 'success');
+                await loadAdminCustomers();
+            } catch (err) {
+                showToast('Error deleting customer: ' + err.message, 'error');
+            }
+        }
+
+        /* ==========================================================================
+           6. PWA DYNAMIC MANIFEST & SVG ICON SETUP
+           ========================================================================== */
+        function generatePwaIcon(size) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = '#059669';
+            ctx.fillRect(0, 0, size, size);
+
+            ctx.fillStyle = '#ffffff';
+            const pad = size * 0.25;
+            const w = size - (pad * 2);
+            const h = size - (pad * 2);
+            ctx.beginPath();
+            ctx.roundRect ? ctx.roundRect(pad, pad + 10, w, h - 10, 20) : ctx.rect(pad, pad + 10, w, h - 10);
+            ctx.fill();
+
+            ctx.fillStyle = '#059669';
+            ctx.font = `bold ${Math.floor(size * 0.35)}px Inter, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('M', size / 2, size / 2 + 5);
+
+            return canvas.toDataURL('image/png');
+        }
+
+        const icon192 = generatePwaIcon(192);
+        const icon512 = generatePwaIcon(512);
+
+        const appleIconLink = document.createElement('link');
+        appleIconLink.rel = 'apple-touch-icon';
+        appleIconLink.href = icon192;
+        document.head.appendChild(appleIconLink);
+
+        const manifestObj = {
+            name: "Shop MODISHA",
+            short_name: "MODISHA",
+            description: "Shop MODISHA Express WhatsApp Ordering & Rewards Portal",
+            start_url: window.location.href,
+            display: "standalone",
+            orientation: "portrait",
+            background_color: "#f8fafc",
+            theme_color: "#059669",
+            icons: [
+                { src: icon192, sizes: "192x192", type: "image/png" },
+                { src: icon512, sizes: "512x512", type: "image/png" }
+            ]
+        };
+
+        const manifestBlob = new Blob([JSON.stringify(manifestObj)], { type: 'application/json' });
+        document.getElementById('manifestLink').href = URL.createObjectURL(manifestBlob);
+
+        /* ==========================================================================
+           7. PWA SERVICE WORKER REGISTRATION
+           ========================================================================== */
+        if ('serviceWorker' in navigator) {
+            const swCode = `
+                const CACHE_NAME = 'modisha-pwa-v2';
+                const ASSETS = [
+                    '${window.location.href}',
+                    'https://cdn.tailwindcss.com',
+                    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
+                    'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap'
+                ];
+
+                self.addEventListener('install', (e) => {
+                    e.waitUntil(
+                        caches.open(CACHE_NAME).then((cache) => {
+                            return cache.addAll(ASSETS).catch(() => {});
+                        })
+                    );
+                    self.skipWaiting();
+                });
+
+                self.addEventListener('activate', (e) => {
+                    e.waitUntil(
+                        caches.keys().then((keys) => {
+                            return Promise.all(
+                                keys.map((key) => {
+                                    if (key !== CACHE_NAME) return caches.delete(key);
+                                })
+                            );
+                        })
+                    );
+                    self.clients.claim();
+                });
+
+                self.addEventListener('fetch', (e) => {
+                    if (e.request.url.includes('supabase.co')) return;
+                    e.respondWith(
+                        caches.match(e.request).then((cachedResponse) => {
+                            if (cachedResponse) return cachedResponse;
+                            return fetch(e.request).catch(() => {
+                                if (e.request.mode === 'navigate') {
+                                    return caches.match('${window.location.href}');
+                                }
+                            });
+                        })
+                    );
+                });
+            `;
+
+            const swBlob = new Blob([swCode], { type: 'application/javascript' });
+            const swUrl = URL.createObjectURL(swBlob);
+
+            navigator.serviceWorker.register(swUrl)
+                .catch(err => console.error('SW Registration failed:', err));
+        }
+
+        /* ==========================================================================
+           8. PWA INSTALLATION & NETWORK MONITORING
+           ========================================================================== */
+        let deferredPrompt = null;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('pwaInstallBanner').classList.remove('hidden');
+            const headerBtn = document.getElementById('headerInstallBtn');
+            if (headerBtn) headerBtn.classList.remove('hidden');
+        });
+
+        function triggerPwaInstall() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then(() => {
+                    deferredPrompt = null;
+                    dismissInstallBanner();
+                });
+            } else {
+                showToast('Use your browser menu and tap "Add to Home Screen" to install!', 'info');
+            }
+        }
+
+        function dismissInstallBanner() {
+            document.getElementById('pwaInstallBanner').classList.add('hidden');
+        }
+
+        window.addEventListener('appinstalled', () => {
+            dismissInstallBanner();
+            const headerBtn = document.getElementById('headerInstallBtn');
+            if (headerBtn) headerBtn.classList.add('hidden');
+        });
+
+        function updateNetworkStatus() {
+            const offlineBar = document.getElementById('offlineBar');
+            if (!navigator.onLine) {
+                offlineBar.classList.remove('hidden');
+            } else {
+                offlineBar.classList.add('hidden');
+            }
+        }
+
+        window.addEventListener('online', updateNetworkStatus);
+        window.addEventListener('offline', updateNetworkStatus);
+        updateNetworkStatus();
+
+        /* ==========================================================================
+           9. EXPRESS ORDERING FORM SUBMISSION
+           ========================================================================== */
+        function handleOrderSubmit(event) {
+            event.preventDefault();
+
+            const name = document.getElementById('fullName').value.trim();
+            const products = document.getElementById('productsList').value.trim();
+            const cashAmount = document.getElementById('cashAmount').value.trim();
+            
+            const paymentMethodElement = document.querySelector('input[name="paymentMethod"]:checked');
+            const paymentMethod = paymentMethodElement ? paymentMethodElement.value : 'Cash';
+
+            const phone = "27824598656";
+
+            const message = 
+`*NEW ORDER - SHOP MODISHA*
+----------------------------------
+👤 *Customer Name:* ${name}
+
+🛒 *Products Shopping List:*
+${products}
+
+💵 *Cash Available:* R${cashAmount}
+💳 *Payment Method:* ${paymentMethod}
+🚚 *Delivery Fee:* R5
+
+----------------------------------
+_Sent via Shop MODISHA PWA App_`;
+
+            const encodedMessage = encodeURIComponent(message);
+            const whatsappUrl = `https://wa.me/${phone}?text=${encodedMessage}`;
+
+            window.open(whatsappUrl, '_blank');
+        }
+
+        /* ==========================================================================
+           10. MODAL CONTROLS & INITIALIZATION
+           ========================================================================== */
+        const ALL_MODALS = [
+            'privacyModal',
+            'termsUseModal',
+            'termsCondModal',
+            'customerFormModal',
+            'quickAdjustModal',
+            'deleteConfirmModal',
+            'supabaseConfigModal'
+        ];
+
+        function openModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.classList.remove('hidden');
+                document.body.classList.add('overflow-hidden');
+            }
+        }
+
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.classList.add('hidden');
+                document.body.classList.remove('overflow-hidden');
+            }
+        }
+
+        window.addEventListener('click', function(event) {
+            ALL_MODALS.forEach(id => {
+                const modal = document.getElementById(id);
+                if (event.target === modal) {
+                    closeModal(id);
+                }
+            });
+        });
+
+        window.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                ALL_MODALS.forEach(closeModal);
+            }
+        });
+
+        // Boot Supabase connection on load
+        initSupabase();
+    </script>
+</body>
+</html>
